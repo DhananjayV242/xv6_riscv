@@ -6,6 +6,9 @@
         # push all registers, call kerneltrap().
         # when kerneltrap() returns, restore registers, return.
         #
+#include "riscv.h"
+#include "memlayout.h"
+
 .globl kerneltrap
 .globl kernelvec
 .align 4
@@ -93,15 +96,11 @@ kernelvec:
 .globl timervec
 .align 4
 timervec:
-        # start.c has set up the memory that mscratch points to:
-        # scratch[0,8,16] : register save area.
-        # scratch[24] : address of CLINT's MTIMECMP register.
-        # scratch[32] : desired interval between interrupts.
         
-        csrrw a0, mscratch, a0
-        sd a1, 0(a0)
-        sd a2, 8(a0)
-        sd a3, 16(a0)
+        # csrrw a0, mscratch, a0
+        # sd a1, 0(a0)
+        # sd a2, 8(a0)
+        # sd a3, 16(a0)
 
         # schedule the next timer interrupt
         # by adding interval to mtimecmp.
@@ -122,3 +121,52 @@ timervec:
         csrrw a0, mscratch, a0
 
         mret
+
+.globl machinetrap
+.align 4
+machinetrap:
+        # start.c has set up the memory that mscratch points to:
+        # scratch[0,8,16] : register save area.
+        # scratch[24] : address of CLINT's MTIMECMP register.
+        # scratch[32] : desired interval between interrupts.
+        # scratch[40] : space to store clock value
+
+        # Store registers that need to be used
+        csrrw a0, mscratch, a0
+        sd a1, 0(a0)
+        sd a2, 8(a0)
+        sd a3, 16(a0)
+
+
+        csrr a1, mcause
+        li a2, MCTIMER
+        li a3, MCECALL
+        beq a1, a2, timervec
+        beq a1, a3, getclock
+
+infspin:
+        j infspin
+
+.global getclock
+.align 4
+getclock:
+
+        li a1, CLINT_MTIME
+        ld a2, 0(a1)
+        sd a2, 40(a0)
+
+        csrr a1, mepc
+        addi a1, a1, 4
+        csrw mepc, a1
+
+        ld a3, 16(a0)
+        ld a2, 8(a0)
+        ld a1, 0(a0)
+        csrrw a0, mscratch, a0
+        
+        // Return to the thread
+        mret
+
+
+
+

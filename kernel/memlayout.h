@@ -65,3 +65,5 @@
 //   TRAPFRAME (p->trapframe, used by the trampoline)
 //   TRAMPOLINE (the same page as in the kernel)
 #define TRAPFRAME (TRAMPOLINE - PGSIZE)
+#define MCTIMER ((1L<<63) + 7)
+#define MCECALL 9L

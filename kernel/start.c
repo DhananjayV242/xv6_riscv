@@ -11,10 +11,11 @@ void timerinit();
 __attribute__ ((aligned (16))) char stack0[4096 * NCPU];
 
 // a scratch area per CPU for machine-mode timer interrupts.
-uint64 timer_scratch[NCPU][5];
+uint64 timer_scratch[NCPU][6];
 
 // assembly code in kernelvec.S for machine-mode timer interrupt.
 extern void timervec();
+extern void machinetrap();
 
 // entry.S jumps here in machine mode on stack0.
 void
@@ -34,7 +35,15 @@ start()
   w_satp(0);
 
   // delegate all interrupts and exceptions to supervisor mode.
-  w_medeleg(0xffff);
+  uint64 medeleg = r_medeleg();
+  medeleg |= 0xffff;
+  /* 
+  Removing the delegation for ecall from S-mode 
+  to allow for clock() syscall to go into machine mode and access
+  value of MTIME register */
+  medeleg &= ~MEDELEG_S_ECALL;  // Removing the delegation for ecall to add functionality to get clock
+
+  w_medeleg(medeleg);
   w_mideleg(0xffff);
   w_sie(r_sie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
 
@@ -79,7 +88,7 @@ timerinit()
   w_mscratch((uint64)scratch);
 
   // set the machine-mode trap handler.
-  w_mtvec((uint64)timervec);
+  w_mtvec((uint64)machinetrap);
 
   // enable machine-mode interrupts.
   w_mstatus(r_mstatus() | MSTATUS_MIE);
