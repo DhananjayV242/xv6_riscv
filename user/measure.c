@@ -23,17 +23,29 @@ fork1(void)
 
 int main(int argc, char *argv[])
 {
-   /* TODO Add condition to fail if 
-   no program given to measure*/
+
+   if(argc < 2)
+    panic("Usage: measure <program name>");
    
-   //uint64 start_time = clock();
-    printf("Measuring time:\n");
+   printf("Measuring %s:\n", argv[1]);
+
+   uint64 time = 0;
+   uint64 start_time, end_time;
+
+   for(int i=0; i<10; i++)
+   {
+    start_time = clock();
+    
     if(fork1() == 0)
         exec(argv[1], &(argv[1]));
     wait(0);
+    end_time = clock();
+    time += (end_time - start_time);
+   }   
 
-    printf("End of interval measurement!\n");
-    //uint64 end_time = clock();
-    //printf("The time taken for the clock tick: %d\n", end_time - start_time);
+    time /= 10;
+    printf("\n\nFinished measuring %s!\n", argv[1]);
+    printf("Total Execution count: 10\n");
+    printf("Average time of execution: %d cycles\n\n", time);
 
 }
