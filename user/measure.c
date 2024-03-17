@@ -37,7 +37,11 @@ int main(int argc, char *argv[])
     start_time = clock();
     
     if(fork1() == 0)
-        exec(argv[1], &(argv[1]));
+    {
+      exec(argv[1], &(argv[1]));
+      printf("exec %s failed\n", argv[1]);
+      panic("exec failed");
+    }
     wait(0);
     end_time = clock();
     time += (end_time - start_time);
@@ -46,6 +50,7 @@ int main(int argc, char *argv[])
     time /= 10;
     printf("\n\nFinished measuring %s!\n", argv[1]);
     printf("Total Execution count: 10\n");
-    printf("Average time of execution: %d cycles\n\n", time);
+    printf("Average time of execution: %p cycles\n\n", time);
 
+    return 0;
 }

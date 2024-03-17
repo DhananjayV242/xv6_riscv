@@ -5,6 +5,7 @@
 #include "spinlock.h"
 #include "proc.h"
 #include "defs.h"
+#include "timer.h"
 
 struct cpu cpus[NCPU];
 
@@ -434,6 +435,28 @@ wait(uint64 addr)
   }
 }
 
+int
+setInterval(void)
+{
+  struct proc *p;
+  uint64 interval;
+  int id = cpuid();
+
+  int runnable = 0;
+  for(p = proc; p<&proc[NPROC]; p++)
+  {
+    // Aquire lock for safety
+    acquire(&p->lock);
+    if(p->state == RUNNABLE)
+      runnable++;
+    release(&p->lock);
+  }
+
+  interval = (NPROC-runnable) * 1000000;
+  updateInterval(id, interval);
+  return runnable;
+}
+
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
 // Scheduler never returns.  It loops, doing:
@@ -446,6 +469,7 @@ scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
+  int runnable = 1; // Set to one incase dynamic tick not used
   
   c->proc = 0;
   for(;;){
@@ -453,6 +477,11 @@ scheduler(void)
     intr_on();
 
     for(p = proc; p < &proc[NPROC]; p++) {
+      #ifdef DYNAMIC_SCHED
+        runnable = setInterval();
+      #endif
+      if(runnable) // Avoid below code segment if no runnable process
+      {
       acquire(&p->lock);
       if(p->state == RUNNABLE) {
         // Switch to chosen process.  It is the process's job
@@ -467,6 +496,7 @@ scheduler(void)
         c->proc = 0;
       }
       release(&p->lock);
+      }
     }
   }
 }
